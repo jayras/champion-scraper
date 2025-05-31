@@ -1,9 +1,4 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
+
 import csv
 import time
 import uuid
@@ -15,10 +10,6 @@ def get_champion_data(champion):
     # Set up Selenium with headless Chrome
     chrome_options = Options()
     chrome_options.add_argument("--headless")
-
-    #temp_profile_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
-    #print(f"Using temporary profile directory: {temp_profile_dir}")
-    #chrome_options.add_argument(f"--user-data-dir={temp_profile_dir}")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
