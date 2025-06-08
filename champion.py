@@ -1,60 +1,53 @@
 import json
+from dataclasses import dataclass
+from enum import Enum
 
-class Champion:
-    def __init__(self, name, faction, affinity):
-        self.name = name
-        self.faction = faction
-        self.affinity = affinity
-        self.champion_ratings = None
-    
-    def setChampionRatings(self, championRatingsBuiler):
-        self.champion_ratings = championRatingsBuiler.build()
-        
-        return self
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if obj is None:
+            return None
+        if isinstance(obj, Enum):
+            return obj.value  # Convert Enum to its value
+        if hasattr(obj, "toJson"):  # If the object has a `toJson()`, use it
+            return obj.toJson()  # Call toJson() without escaping issues
+        return super().default(obj)
 
-    def toJson(self):
-        return json.dumps({
-            'name': self.name,
-            'faction': self.faction,
-            'affinity': self.affinity,
-            "champion_ratings": self.champion_ratings.toJson() if self.champion_ratings else None
-        })
-    
-    def __str__(self):
-        return self.toJson()
+class FactionWarsRating(Enum):
+    GODLIKE = 5
+    GREAT = 4
+    GOOD = 3
+    OK = 2
+    BAD = 1
 
+def get_faction_wars_rating(label: str) -> FactionWarsRating:
+    mapping = {
+        "Godlike": FactionWarsRating.GODLIKE,
+        "Great": FactionWarsRating.GREAT,
+        "Good": FactionWarsRating.GOOD,
+        "OK": FactionWarsRating.OK,
+        "Bad": FactionWarsRating.BAD
+    }
+    return mapping.get(label, None)  # Returns None if label is unknown
 
-class ChampionRatings:
-    def __init__(self, overall, core, dungeons, hard_mode, doom_tower, faction_wars):
-        self.overall = overall
-        self.core = core
-        self.dungeons = dungeons
-        self.hard_mode = hard_mode
-        self.doom_tower = doom_tower
-        self.faction_wars = faction_wars
+@dataclass
+class CoreRatings:
+    __slots__ = ('demon_lord', 'hydra', 'waves', 'chimera', 'amius', 'chimera_trials', 'sintranos_hard_stages')
+    demon_lord: float
+    hydra: float
+    waves: float
+    chimera: float
+    amius: float
+    chimera_trials: float
+    sintranos_hard_stages: float
 
-    def toJson(self):
-        return json.dumps({
-            'Overall Rating': self.overall,
-            'Core Areas': self.core.toJson,
-            'Dungeons': self.dungeons.toJson,
-            'Hard Mode': self.hard_mode.toJson,
-            'Doom Tower': self.doom_tower.toJson,
-            'Faction Wars': self.faction_wars.toJson
-        })
-    
-    def __str__(self):
-        return self.toJson()
-
-class coreRatings:
-    def __init__(self):
-        self.demon_lord = 0
-        self.hydra = 0
-        self.waves = 0
-        self.chimera = 0
-        self.amius = 0
-        self.chimera_trials = 0
-        self.sintranos_hard_stages = 0
+    def __init__(self, demon_lord=0.0, hydra=0.0, waves=0.0, chimera=0.0, amius=0.0, chimera_trials=0.0, sintranos_hard_stages=0.0):
+        self.demon_lord = demon_lord
+        self.hydra = hydra
+        self.waves = waves
+        self.chimera = chimera
+        self.amius = amius
+        self.chimera_trials = chimera_trials
+        self.sintranos_hard_stages = sintranos_hard_stages
 
     def setRating(self, name, rating):
         if name == 'Demon Lord' or name == "Demon Lord:":
@@ -74,8 +67,8 @@ class coreRatings:
         else:
             print(f"Warning: Unknown core rating name '{name}' with value {rating}.")
 
-    def toJson(self):
-        return json.dumps({
+    def toJson(self, as_dict=False):
+        data = {
             'Demon Lord': self.demon_lord,
             'Hydra': self.hydra,
             'Waves': self.waves,
@@ -83,21 +76,32 @@ class coreRatings:
             'Amius': self.amius,
             'Chimera Trials': self.chimera_trials,
             'Sintranos Hard Stages': self.sintranos_hard_stages
-        })
+        }
+        return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
     
     def __str__(self):
         return self.toJson()
-    
-class dungeonRatings:
-    def __init__(self):
-        self.spider = 0
-        self.fire_knight = 0
-        self.dragon = 0
-        self.ice_golem = 0
-        self.iron_twins = 0
-        self.sand_devil = 0
-        self.shogun_grove = 0
-    
+
+@dataclass    
+class DungeonRatings:
+    __slots__ = ('spider', 'fire_knight', 'dragon', 'ice_golem', 'iron_twins', 'sand_devil', 'shogun_grove')
+    spider: float
+    fire_knight: float
+    dragon: float
+    ice_golem: float
+    iron_twins: float
+    sand_devil: float
+    shogun_grove: float
+
+    def __init__(self, spider=0.0, fire_knight=0.0, dragon=0.0, ice_golem=0.0, iron_twins=0.0, sand_devil=0.0, shogun_grove=0.0):
+        self.spider = spider
+        self.fire_knight = fire_knight
+        self.dragon = dragon
+        self.ice_golem = ice_golem
+        self.iron_twins = iron_twins
+        self.sand_devil = sand_devil
+        self.shogun_grove = shogun_grove
+
     def setRating(self, name, rating):
         if name == 'Spider' or name == "Spider:":
             self.spider = rating
@@ -116,8 +120,8 @@ class dungeonRatings:
         else:
             print(f"Warning: Unknown dungeon rating name '{name}' with value {rating}.")
 
-    def toJson(self):
-        return json.dumps({
+    def toJson(self, as_dict=False):
+        data ={
             'Spider': self.spider,
             'Fire Knight': self.fire_knight,
             'Dragon': self.dragon,
@@ -125,16 +129,25 @@ class dungeonRatings:
             'Iron Twins': self.iron_twins,
             'Sand Devil': self.sand_devil,
             'Shogun Grove': self.shogun_grove
-        })
+        }
+        return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
+    
     def __str__(self):
         return self.toJson()
 
-class hardModeRatings:
-    def __init__(self):
-        self.spider = 0
-        self.fire_knight = 0
-        self.dragon = 0
-        self.ice_golem = 0
+@dataclass
+class HardModeRatings:
+    __slots__ = ('spider', 'fire_knight', 'dragon', 'ice_golem')
+    spider: float
+    fire_knight: float
+    dragon: float
+    ice_golem: float
+
+    def __init__(self, spider=0.0, fire_knight=0.0, dragon=0.0, ice_golem=0.0):
+        self.spider = spider
+        self.fire_knight = fire_knight
+        self.dragon = dragon
+        self.ice_golem = ice_golem
 
     def setRating(self, name, rating):
         if name == 'Spider' or name == "Spider:":
@@ -148,20 +161,32 @@ class hardModeRatings:
         else:
             print(f"Warning: Unknown hard mode rating name '{name}' with value {rating}.")
 
-    def toJson(self):
-        return json.dumps({
+    def toJson(self, as_dict=False):
+        data = {
             'Spider': self.spider,
             'Fire Knight': self.fire_knight,
             'Dragon': self.dragon,
             'Ice Golem': self.ice_golem
-        })
+        }
+        return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
 
     def __str__(self):
         return self.toJson()
 
-class doomTowerRatings:
-    def __init__(self, magna_dragon, nether_spider, celestial_griffin, dreadhorn, scarab_king, frost_spider, eternal_dragon, dark_fae):
-        self.magna_dragon = magna_dragon
+@dataclass
+class DoomTowerRatings:
+    __slots__ = ('magma_dragon', 'nether_spider', 'celestial_griffin', 'dreadhorn', 'scarab_king', 'frost_spider', 'eternal_dragon', 'dark_fae')
+    magma_dragon: float
+    nether_spider: float
+    celestial_griffin: float
+    dreadhorn: float
+    scarab_king: float
+    frost_spider: float
+    eternal_dragon: float
+    dark_fae: float
+
+    def __init__(self, magma_dragon=0.0, nether_spider=0.0, celestial_griffin=0.0, dreadhorn=0.0, scarab_king=0.0, frost_spider=0.0, eternal_dragon=0.0, dark_fae=0.0):
+        self.magma_dragon = magma_dragon
         self.nether_spider = nether_spider
         self.celestial_griffin = celestial_griffin
         self.dreadhorn = dreadhorn
@@ -170,9 +195,29 @@ class doomTowerRatings:
         self.eternal_dragon = eternal_dragon
         self.dark_fae = dark_fae
 
-    def toJson(self):
-        return json.dumps({
-            'Magna Dragon': self.magna_dragon,
+    def setRating(self, name, rating):
+        if name == 'Magma Dragon' or name == "Magma Dragon:":
+            self.magma_dragon = rating
+        elif name == 'Nether Spider' or name == "Nether Spider:":
+            self.nether_spider = rating
+        elif name == 'Celestial Griffin' or name == "Celestial Griffin:":
+            self.celestial_griffin = rating
+        elif name == 'Dreadhorn' or name == "Dreadhorn:":
+            self.dreadhorn = rating
+        elif name == 'Scarab King' or name == "Scarab King:":
+            self.scarab_king = rating
+        elif name == 'Frost Spider' or name == "Frost Spider:":
+            self.frost_spider = rating
+        elif name == 'Eternal Dragon' or name == "Eternal Dragon:":
+            self.eternal_dragon = rating
+        elif name == 'Dark Fae' or name == "Dark Fae:":
+            self.dark_fae = rating
+        else:
+            print(f"Warning: Unknown doom tower rating name '{name}' with value {rating}.")
+
+    def toJson(self, as_dict=False):
+        data = {
+            'Magma Dragon': self.magma_dragon,
             'Nether Spider': self.nether_spider,
             'Celestial Griffin': self.celestial_griffin,
             'Dreadhorn': self.dreadhorn,
@@ -180,131 +225,107 @@ class doomTowerRatings:
             'Frost Spider': self.frost_spider,
             'Eternal Dragon': self.eternal_dragon,
             'Dark Fae': self.dark_fae
-        })
+        }
+        return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
 
     def __str__(self):
         return self.toJson()
 
-class factionWarsRatings:
-    def __init__(self, damage, decrease_defence, crowd_control, turn_meter_control):
-        self.damage = damage
-        self.decrease_defence = decrease_defence
-        self.crowd_control = crowd_control
-        self.turn_meter_control = turn_meter_control
+# @dataclass
+# class FactionWarsRatings:
+#     __slots__ = ('damage', 'decrease_defence', 'crowd_control', 'turn_meter_control', 'protection_and_support')
+#     damage: FactionWarsRating
+#     decrease_defence: FactionWarsRating
+#     crowd_control: FactionWarsRating
+#     turn_meter_control: FactionWarsRating
+#     protection_and_support: FactionWarsRating
 
-    def toJson(self):
-        return json.dumps({
-            'Damage': self.damage,
-            'Decrease Defence': self.decrease_defence,
-            'Crowd Control': self.crowd_control,
-            'Turn Meter Control': self.turn_meter_control
-        })
+#     def __init__(self, damage=None, decrease_defence=None, crowd_control=None, turn_meter_control=None, protection_and_support=None):
+#         self.damage = damage
+#         self.decrease_defence = decrease_defence
+#         self.crowd_control = crowd_control
+#         self.turn_meter_control = turn_meter_control
+#         self.protection_and_support = protection_and_support
+
+#     def setRating(self, name, rating):
+#         if name == 'Damage' or name == "Damage:":
+#             self.damage = get_faction_wars_rating(rating)
+#         elif name == 'Decrease Defence' or name == "Decrease Defence:":
+#             self.decrease_defence = get_faction_wars_rating(rating)
+#         elif name == 'Crowd Control' or name == "Crowd Control:":
+#             self.crowd_control = get_faction_wars_rating(rating)
+#         elif name == 'Turn Meter Control' or name == "Turn Meter Control:":
+#             self.turn_meter_control = get_faction_wars_rating(rating)
+#         elif name == 'Protection and Support' or name == "Protection and Support:":
+#         else:
+#             print(f"Warning: Unknown faction wars rating name '{name}' with value {rating}.")
+
+#     def toJson(self, as_dict=False):
+#         data = {
+#             'Damage': self.damage,
+#             'Decrease Defence': self.decrease_defence,
+#             'Crowd Control': self.crowd_control,
+#             'Turn Meter Control': self.turn_meter_control
+#         }
+#         return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
+
 
     def __str__(self):
         return self.toJson()
 
-class ChampionRatingsBuilder:
-    def __init__(self):
-        self.overall = None
-        self.core = None
-        self.dungeons = None
-        self.hard_mode = None
-        self.doom_tower = None
-        self.faction_wars = None
+@dataclass
+class ChampionRatings:
+    __slots__ = ('overall', 'core', 'dungeons', 'hard_mode', 'doom_tower')
+    overall: float
+    core: CoreRatings
+    dungeons: DungeonRatings
+    hard_mode: HardModeRatings
+    doom_tower: DoomTowerRatings
+    #faction_wars: FactionWarsRatings
 
-    def setOverall(self, overall: float):
+    def __init__(self, overall=0.0, core=None, dungeons=None, hard_mode=None, doom_tower=None, faction_wars=None):
         self.overall = overall
-        return self
+        self.core = core if core is not None else CoreRatings()
+        self.dungeons = dungeons if dungeons is not None else DungeonRatings()
+        self.hard_mode = hard_mode if hard_mode is not None else HardModeRatings()
+        self.doom_tower = doom_tower if doom_tower is not None else DoomTowerRatings()
+        #self.faction_wars = faction_wars if faction_wars is not None else FactionWarsRatings()
 
-    def setCore(self, core: coreRatings):
-        self.core = core
-        return self
+    def toJson(self, as_dict=False):
+        data = {
+            'Overall Rating': self.overall,
+            'Core Areas': self.core.toJson(as_dict=True),
+            'Dungeons': self.dungeons.toJson(as_dict=True),
+            'Hard Mode': self.hard_mode.toJson(as_dict=True),
+            'Doom Tower': self.doom_tower.toJson(as_dict=True)
+        }
+        return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
+    
+    def __str__(self):
+        return self.toJson()
 
-    def setDungeons(self, dungeons: dungeonRatings):
-        self.dungeons = dungeons
-        return self
+@dataclass
+class Champion:
+    __slots__ = ('name', 'faction', 'affinity', 'ratings')
+    name: str
+    faction: str
+    affinity: str
+    ratings: ChampionRatings
 
-    def setHardMode(self, hard_mode: hardModeRatings):
-        self.hard_mode = hard_mode
-        return self
+    def __init__(self, name='', faction='', affinity='', ratings=None):
+        self.name = name
+        self.faction = faction
+        self.affinity = affinity
+        self.ratings = ratings if ratings is not None else ChampionRatings()
 
-    def setDoomTower(self, doom_tower: doomTowerRatings):
-        self.doom_tower = doom_tower
-        return self
-
-    def setFactionWars(self, faction_wars: factionWarsRatings):
-        self.faction_wars = faction_wars
-        return self
-
-    def build(self):
-        return ChampionRatings(
-            overall=self.overall,
-            core=self.core,
-            dungeons=self.dungeons,
-            hard_mode=self.hard_mode,
-            doom_tower=self.doom_tower,
-            faction_wars=self.faction_wars
-        )
-
-def createChampion(name, role, faction):
-    return Champion(name, role, faction)
-
-def createChampionRatings(overall, core, dungeons, hard_mode, doom_tower, faction_wars):
-    return ChampionRatingsBuilder() \
-        .setOverall(overall) \
-        .setCore(core) \
-        .setDungeons(dungeons) \
-        .setHardMode(hard_mode) \
-        .setDoomTower(doom_tower) \
-        .setFactionWars(faction_wars) \
-        .build()
-
-def createCoreRatings(demon_lord, hydra, waves, chimera, amius, chimera_trials, sintranos_hard_stages):
-    return coreRatings(
-        demon_lord=demon_lord,
-        hydra=hydra,
-        waves=waves,
-        chimera=chimera,
-        amius=amius,
-        chimera_trials=chimera_trials,
-        sintranos_hard_stages=sintranos_hard_stages
-    )
-
-def createDungeonRatings(spider, fire_knight, dragon, ice_golem, iron_twins, sand_devil, shogun_grove):
-    return dungeonRatings(
-        spider=spider,
-        fire_knight=fire_knight,
-        dragon=dragon,
-        ice_golem=ice_golem,
-        iron_twins=iron_twins,
-        sand_devil=sand_devil,
-        shogun_grove=shogun_grove
-    )
-
-def createHardModeRatings(spider, fire_knight, dragon, ice_golem):
-    return hardModeRatings(
-        spider=spider,
-        fire_knight=fire_knight,
-        dragon=dragon,
-        ice_golem=ice_golem
-    )
-
-def createDoomTowerRatings(magna_dragon, nether_spider, celestial_griffin, dreadhorn, scarab_king, frost_spider, eternal_dragon, dark_fae):
-    return doomTowerRatings(
-        magna_dragon=magna_dragon,
-        nether_spider=nether_spider,
-        celestial_griffin=celestial_griffin,
-        dreadhorn=dreadhorn,
-        scarab_king=scarab_king,
-        frost_spider=frost_spider,
-        eternal_dragon=eternal_dragon,
-        dark_fae=dark_fae
-    )
-
-def createFactionWarsRatings(damage, decrease_defence, crowd_control, turn_meter_control):
-    return factionWarsRatings(
-        damage=damage,
-        decrease_defence=decrease_defence,
-        crowd_control=crowd_control,
-        turn_meter_control=turn_meter_control
-    )
+    def toJson(self, as_dict=False):
+        data = {
+            'Name': self.name,
+            'Faction': self.faction,
+            'Affinity': self.affinity,
+            "Ratings": self.ratings.toJson(as_dict=True)
+        }
+        return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)
+    
+    def __str__(self):
+        return self.toJson()

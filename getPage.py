@@ -6,7 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 
 def get_hellhades_page(champion):
-    url = f"https://hellhades.com/raid/champions/{champion.lower()}/"
+    url = f"https://hellhades.com/raid/champions/{champion.lower().replace(" ","-")}/"
     
     # Set up Selenium with headless Chrome
     chrome_options = Options()
