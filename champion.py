@@ -275,15 +275,16 @@ class DoomTowerRatings:
 
 @dataclass
 class ChampionRatings:
-    __slots__ = ('overall', 'core', 'dungeons', 'hard_mode', 'doom_tower')
+    __slots__ = ('overall', 'book', 'core', 'dungeons', 'hard_mode', 'doom_tower')
     overall: float
+    book: int
     core: CoreRatings
     dungeons: DungeonRatings
     hard_mode: HardModeRatings
     doom_tower: DoomTowerRatings
     #faction_wars: FactionWarsRatings
 
-    def __init__(self, overall=0.0, core=None, dungeons=None, hard_mode=None, doom_tower=None, faction_wars=None):
+    def __init__(self, overall=0.0, book=0, core=None, dungeons=None, hard_mode=None, doom_tower=None, faction_wars=None):
         self.overall = overall
         self.core = core if core is not None else CoreRatings()
         self.dungeons = dungeons if dungeons is not None else DungeonRatings()
@@ -294,6 +295,7 @@ class ChampionRatings:
     def toJson(self, as_dict=False):
         data = {
             'Overall Rating': self.overall,
+            'Book Value': self.book,
             'Core Areas': self.core.toJson(as_dict=True),
             'Dungeons': self.dungeons.toJson(as_dict=True),
             'Hard Mode': self.hard_mode.toJson(as_dict=True),
@@ -306,16 +308,18 @@ class ChampionRatings:
 
 @dataclass
 class Champion:
-    __slots__ = ('name', 'faction', 'affinity', 'ratings')
+    __slots__ = ('name', 'faction', 'affinity', 'rarity', 'ratings')
     name: str
     faction: str
     affinity: str
+    rarity: str
     ratings: ChampionRatings
 
-    def __init__(self, name='', faction='', affinity='', ratings=None):
+    def __init__(self, name='', faction='', affinity='', rarity='', ratings=None):
         self.name = name
         self.faction = faction
         self.affinity = affinity
+        self.rarity = rarity
         self.ratings = ratings if ratings is not None else ChampionRatings()
 
     def toJson(self, as_dict=False):
@@ -323,6 +327,7 @@ class Champion:
             'Name': self.name,
             'Faction': self.faction,
             'Affinity': self.affinity,
+            'Rarity': self.rarity,
             "Ratings": self.ratings.toJson(as_dict=True)
         }
         return data if as_dict else json.dumps(data, cls=CustomEncoder, indent=4)

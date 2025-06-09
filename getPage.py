@@ -20,6 +20,10 @@ def get_hellhades_page(champion):
     # Open the page
     driver.get(url)
     
+    if "Page not found" in driver.page_source:
+        print(f"Champion '{champion}' does not exist. Skipping...")
+        return None  # Exit early
+
     # Wait for the ratings list to load (adjust the timeout as needed)
     try:
         element_present = EC.presence_of_element_located((By.CLASS_NAME, "raid-ratings-list"))

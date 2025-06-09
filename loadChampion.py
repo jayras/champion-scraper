@@ -24,7 +24,8 @@ def getFactionFromSource(faction_source):
         "skinwalkers": "Skinwalkers",
         "ogryn-tribes": "Ogryn Tribes",
         "demonspawn": "Demon Spawn",
-        "void": "Void"
+        "bannerlords": "Banner Lords",
+        "sylvan-watchers": "Sylvan Watchers"
     }
 
     #faction_key = os.path.splitext(os.path.basename(faction_source))[0]
@@ -97,6 +98,68 @@ def getName(soup):
         return None
     
     return name
+
+def getRarityAndBookValue(soup):
+    rarity = None
+    book_value = 0
+    # First, locate the Skills sections:
+    # <div id="skills" class="fusion-container-anchor">
+    skills = soup.find("div", id="skills")
+    if not skills:
+        print("Warning: Could not find the skills section.")
+        return None, None
+    
+    # Rarity is being derived from the book image:
+    # <img decoding="async" src="/wp-content/plugins/rsl-assets/assets/artwork/Epic.png" data-orig-src="/wp-content/plugins/rsl-assets/assets/artwork/Epic.png" class="rarity-book lazyloaded">
+    rarity_book = skills.find("img", class_="rarity-book")
+    if not rarity_book:
+        print("Warning: Could not find the rarity book image.")
+        return None, None
+
+    rarity_source = rarity_book["src"]
+    if not rarity_source: 
+        rarity_source = rarity_book["data-orig-src"] # Fallback to data-orig-src if src is not available
+        if not rarity_source:
+            print("Warning: Could not find the rarity book source.")
+            return None, None
+    # Determine rarity from the image source:
+    # /wp-content/plugins/rsl-assets/assets/artwork/Epic.png is Epic
+    rarity_map = {
+        "Legendary": "Legendary",
+        "Epic": "Epic",
+        "Rare": "Rare",
+        "Uncommon": "Uncommon",
+        "Common": "Common"
+    }
+    rarity_key = rarity_source.rsplit("/", 1)[-1].split(".")[0]
+    if rarity_key in rarity_map:
+        rarity = rarity_map[rarity_key]
+    else:
+        print("Warning: Could not determine rarity from source:", rarity_source)
+        return None, None
+    
+    # Book value:
+    # <div class="fusion-layout-column fusion_builder_column_inner fusion-builder-nested-column-1 fusion_builder_column_inner_2_5 2_5 fusion-flex-column fusion-flex-align-self-center book-value-text" style="--awb-padding-left-small:5px;--awb-bg-size:cover;--awb-width-large:40%;--awb-margin-top-large:0px;--awb-spacing-right-large:0px;--awb-margin-bottom-large:0px;--awb-spacing-left-large:0px;--awb-width-medium:20%;--awb-order-medium:0;--awb-spacing-right-medium:0px;--awb-margin-bottom-medium:0;--awb-spacing-left-medium:0px;--awb-width-small:40%;--awb-order-small:0;--awb-spacing-right-small:0px;--awb-margin-bottom-small:0;--awb-spacing-left-small:0px;" data-scroll-devices="small-visibility,medium-visibility,large-visibility">
+    # <div class="fusion-column-wrapper fusion-column-has-shadow fusion-flex-justify-content-center fusion-content-layout-column">
+    # <div class="fusion-text fusion-text-3 fusion-text-no-margin no-padding-text" style="--awb-content-alignment:center;--awb-font-size:30px;--awb-line-height:1em;--awb-text-font-family:&quot;Big Noodle&quot;;--awb-text-font-style:normal;--awb-text-font-weight:400;"><p>9/10</p>
+    # <p>Book Value</p>
+    # </div></div></div>
+    book_value_div = skills.find("div", class_="book-value-text")
+    if not book_value_div:
+        print("Warning: Could not find the book value text.")
+        return rarity, None
+    book_value_text = book_value_div.get_text(strip=True)
+    if not book_value_text:
+        print("Warning: Book value text is empty.")
+        return rarity, None
+    # Extract the numeric value from the book value text:
+    book_value_match = re.search(r"(\d+)", book_value_text)
+    if book_value_match:
+        book_value = int(book_value_match.group(1))
+    else:
+        print("Warning: Could not extract book value from text:", book_value_text)
+        return rarity, None
+    return rarity, book_value
 
 def getFactionAffinity(soup):
     # Locate the faction and affinity:
@@ -347,6 +410,15 @@ def load_hell_Hades(html):
         print("Warning: Champion faction or affinity could not be determined.")
         return None
     
+    rarity, book_value = getRarityAndBookValue(soup)
+    this_champion.rarity = rarity
+    if not this_champion.rarity:
+        print(f"Warning: Champion {this_champion.name} rarity could not be determined.")
+    
+    this_champion.ratings.book = book_value
+    if this_champion.ratings.book is None:
+        print(f"Warning: Champion {this_champion.name} book value could not be determined.")
+
     this_champion.ratings.overall = getOverallRating(soup)
     if this_champion.ratings.overall is None:
         print("Warning: Overall rating could not be determined.")
