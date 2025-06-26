@@ -1,42 +1,49 @@
 import getPage
 import loadChampion
-import toExcel
+from champion_excel import ChampionExcel
+import os
+from champion_database import ChampionDatabase
 
+def scrape_and_load(db, xcel):
+        #Debug:
+        names = ["Geomancer"]
+
+        names = xcel.getChampionNames()
+
+        for name in names:
+            print(f"Loading champion: {name}")
+            page = getPage.get_hellhades_page(name)
+
+            if page:
+                champion = loadChampion.load_hell_Hades(page)
+                if champion:
+                    print(f"Champion {champion.name} loaded successfully!")
+                    xcel.writeChampion(champion.toJson(as_dict=True))
+                    champion_id = db.save_champion(champion.toJson(as_dict=True))
+                    db.save_ratings(champion_id= champion_id, ratings_data=champion.toJson(as_dict=True)["Ratings"])
+                    print(f"Champion {champion.name} saved!")
+                else:
+                    print(f"Failed to load champion data for {name}")
+            else:
+                print(f"Failed to retrieve page for {name}")
 
 def main():
+    db_path = os.path.join(os.getcwd(), "output", "champions.db")  # Saves inside a "data" folder
+    excel_path = "output/raid_champions.xlsx"
+
     print("Champion Scraper is running!")
-    # Call your scraping and data processing functions here
-    # names = ["Ninja", "Doompriest", "Roshcard the Tower", "Saito", "Tayrel", "Tyrant Ixlimor", "Gurptuk Moss-Beard"]
-    names = ["Geomancer"]
+    db = ChampionDatabase(db_name=db_path)
+    xcel = ChampionExcel(file_path=excel_path)
 
-    # names = [
-    #     "Criodan the Blue",
-    #     "Pann the Bowhorn",
-    #     "Yaga the Insatiable",
-    #     "Teryx the Restless",
-    #     "Denid the Tusk Knight",
-    #     "Branch-arm Lasair",
-    #     "Boltsmith"
-    # ]
-
-
-    file_path = "output/raid_champions.xlsx"
-    #names = toExcel.getChampionNames(file_path)
-
-    for name in names:
-        print(f"Loading champion: {name}")
-        page = getPage.get_hellhades_page(name)
-
-        if page:
-            champion = loadChampion.load_hell_Hades(page)
-            if champion:
-                print(f"Champion {champion.name} loaded successfully!\n{champion.toJson(as_dict=False)}")
-                toExcel.championToExcel(champion.toJson(as_dict=True))
-            else:
-                print(f"Failed to load champion data for {name}")
-        else:
-            print(f"Failed to retrieve page for {name}")
-
+    try:
+        scrape_and_load(db, xcel)
+        db.pull_data('Core Areas', 'Demon Lord')  # Example of pulling data for Demon Lord champions
+    except Exception as e: 
+        print(f"An error occurred: {e}")
+    finally:
+        db.conn.close()
+        print("Database connection closed.")
+        print("Champion Scraper finished running!")
 
 if __name__ == "__main__":
     main()
