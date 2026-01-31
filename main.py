@@ -1,6 +1,6 @@
 import getPage
 import loadChampion
-from champion_excel import ChampionExcel
+from champion_sheets import ChampionSheets
 import os
 from champion_database import ChampionDatabase
 
@@ -29,11 +29,15 @@ def scrape_and_load(db, xcel):
 
 def main():
     db_path = os.path.join(os.getcwd(), "output", "champions.db")  # Saves inside a "data" folder
-    excel_path = "output/raid_champions.xlsx"
+    # Spreadsheet name and credentials may be provided via env vars:
+    # - GS_SPREADSHEET: spreadsheet name (default: 'Raid Champions')
+    # - GOOGLE_SA_CREDS: path to service account JSON (default: 'google_service_account.json')
+    spreadsheet_name = os.environ.get('GS_SPREADSHEET', 'Raid Champions')
+    creds_path = os.environ.get('GOOGLE_SA_CREDS', 'google_service_account.json')
 
     print("Champion Scraper is running!")
     db = ChampionDatabase(db_name=db_path)
-    xcel = ChampionExcel(file_path=excel_path)
+    xcel = ChampionSheets(spreadsheet_name=spreadsheet_name, creds_path=creds_path)
 
     try:
         scrape_and_load(db, xcel)

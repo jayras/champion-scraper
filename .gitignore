@@ -195,3 +195,14 @@ cython_debug/
 
 # Output directories
 output/
+
+# Keys and credentials
+*.key
+*.pem
+credentials.json
+secrets.json
+.env.local
+google_service_account.json
+google_service_accouint.json
+google_service_account*.json
+*service_account*.json
