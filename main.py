@@ -29,7 +29,7 @@ def scrape_and_load(db, xcel):
 
 def main():
     db_path = os.path.join(os.getcwd(), "output", "champions.db")  # Saves inside a "data" folder
-    excel_path = "output/raid_champions.xlsx"
+    excel_path = "output/raid_champions2.xlsx"
 
     print("Champion Scraper is running!")
     db = ChampionDatabase(db_name=db_path)
