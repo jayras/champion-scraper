@@ -32,7 +32,7 @@ class ChampionDatabase:
         self.conn.commit()
 
     def save_champion(self, champion_data):
-        """Stores or updates champion core details."""
+        """Stores or updates champion core details. Returns the champion_id."""
         self.cursor.execute("""
             INSERT INTO champions (name, faction, affinity, rarity)
             VALUES (?, ?, ?, ?)
@@ -48,7 +48,11 @@ class ChampionDatabase:
         ))
         self.conn.commit()
 
-        return self.cursor.lastrowid  # Fetch assigned champion_id
+        # Query for the actual champion_id (works for both inserts and updates)
+        self.cursor.execute("SELECT champion_id FROM champions WHERE name = ?", 
+                          (champion_data["Name"],))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
 
     def save_ratings(self, champion_id, ratings_data):
         """Stores or updates champion ratings dynamically."""
