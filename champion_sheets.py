@@ -46,7 +46,33 @@ class ChampionSheets:
 
     def _read_sheet_df(self, title):
         ws = self.ss.worksheet(title)
-        records = ws.get_all_records()
+        try:
+            records = ws.get_all_records()
+        except gspread.exceptions.GSpreadException as e:
+            # Handle duplicate header issue by getting raw values and building dataframe manually
+            if "duplicates" in str(e):
+                rows = ws.get_all_values()
+                if not rows:
+                    return pd.DataFrame()
+                # Use first row as headers, clean empty column names
+                headers = [h if h else f"Col_{i}" for i, h in enumerate(rows[0])]
+                # Remove duplicate column names by appending index
+                seen = {}
+                clean_headers = []
+                for h in headers:
+                    if h in seen:
+                        seen[h] += 1
+                        clean_headers.append(f"{h}_{seen[h]}")
+                    else:
+                        seen[h] = 0
+                        clean_headers.append(h)
+                
+                data = rows[1:] if len(rows) > 1 else []
+                df = pd.DataFrame(data, columns=clean_headers)
+                return df
+            else:
+                raise
+        
         if not records:
             return pd.DataFrame(columns=ws.row_values(1))
         return pd.DataFrame.from_records(records)
@@ -74,28 +100,45 @@ class ChampionSheets:
         """Safely write dataframe to sheet, with data loss protection and backup"""
         ws = self.ss.worksheet(title)
         
-        # Get existing data for comparison
-        existing = ws.get_all_records()
-        existing_count = len(existing)
+        # Get existing data for comparison (with error handling for duplicate headers)
+        try:
+            existing = ws.get_all_records()
+            existing_count = len(existing)
+        except gspread.exceptions.GSpreadException:
+            # If we can't get records due to duplicate headers, get raw values instead
+            rows = ws.get_all_values()
+            existing_count = len(rows) - 1 if rows else 0
+        
         new_count = len(df)
         
         # Create a backup BEFORE any write operation
         if existing_count > 0:
-            existing_df = pd.DataFrame.from_records(existing)
-            backup_path = self._backup_sheet_df(title, existing_df)
+            try:
+                existing_df = pd.DataFrame.from_records(ws.get_all_records())
+            except gspread.exceptions.GSpreadException:
+                # Build from raw values if records fails
+                rows = ws.get_all_values()
+                if rows:
+                    headers = [h if h else f"Col_{i}" for i, h in enumerate(rows[0])]
+                    existing_df = pd.DataFrame(rows[1:], columns=headers)
+                else:
+                    existing_df = pd.DataFrame()
+            
+            if not existing_df.empty:
+                backup_path = self._backup_sheet_df(title, existing_df)
         
         # Safeguard: don't proceed if we're losing MORE than 1 champion (>2 rows including header)
-        # Champions sheet should have at least the same # of rows or more (we're upserting)
-        # Allow for small differences due to data processing
         if title == "Champions" and existing_count > 1 and new_count < existing_count - 1:
             print(f"❌ WARNING: {title} would lose significant data ({existing_count} → {new_count} rows). Aborting write.")
-            print(f"✓ Backup saved at: {backup_path}")
+            if 'backup_path' in locals():
+                print(f"✓ Backup saved at: {backup_path}")
             return False
         
         # For other sheets (Ratings), use original threshold
         if title != "Champions" and existing_count > 0 and new_count < existing_count * 0.5:
             print(f"❌ WARNING: {title} would lose significant data ({existing_count} → {new_count} rows). Aborting write.")
-            print(f"✓ Backup saved at: {backup_path}")
+            if 'backup_path' in locals():
+                print(f"✓ Backup saved at: {backup_path}")
             return False
         
         # Clear and rewrite

@@ -5,33 +5,84 @@ import champion_reports
 import os
 import sys
 import argparse
+import pandas as pd
 from champion_database import ChampionDatabase
 
 def scrape_and_load(db, xcel):
-        #Debug:
-        names = ["Geomancer"]
-
+        """Scrape champions from Hellhades and persist to DB, then sync to Sheets."""
+        print("\n📖 Reading champion list from Google Sheets...")
         names = xcel.getChampionNames()
+        print(f"Found {len(names)} champions to process")
+
+        print("\n🔄 Scraping champion data from Hellhades...")
+        scraped_count = 0
+        failed_count = 0
 
         for name in names:
             print(f"Loading champion: {name}")
             page = getPage.get_hellhades_page(name)
 
-            if page:
-                champion = loadChampion.load_hell_Hades(page)
-                if champion:
-                    print(f"Champion {champion.name} loaded successfully!")
-                    # Save to database first to get the champion_id
-                    champion_id = db.save_champion(champion.toJson(as_dict=True))
-                    # Save ratings with the DB-assigned champion_id
-                    db.save_ratings(champion_id=champion_id, ratings_data=champion.toJson(as_dict=True)["Ratings"])
-                    # Now write to Sheets with the DB-assigned champion_id
-                    xcel.writeChampion(champion.toJson(as_dict=True), champion_id=champion_id)
-                    print(f"Champion {champion.name} saved!")
-                else:
-                    print(f"Failed to load champion data for {name}")
-            else:
-                print(f"Failed to retrieve page for {name}")
+            if not page:
+                print(f"❌ Failed to retrieve page for {name}")
+                failed_count += 1
+                continue
+
+            champion = loadChampion.load_hell_Hades(page)
+            if not champion:
+                print(f"❌ Failed to load champion data for {name}")
+                failed_count += 1
+                continue
+
+            print(f"✓ Champion {champion.name} loaded successfully!")
+
+            # Persist ONLY to DB (DB is source of truth)
+            champ_json = champion.toJson(as_dict=True)
+            champion_id = db.save_champion(champ_json)
+            db.save_ratings(champion_id=champion_id, ratings_data=champ_json.get("Ratings", {}))
+            print(f"  Saved to DB with ID {champion_id}")
+            
+            scraped_count += 1
+
+        print(f"\n✓ Scraping complete: {scraped_count} champions loaded, {failed_count} failed")
+
+        # Now query the database to build the sheets data
+        print("\n📊 Querying database to sync with Google Sheets...")
+        db_path = db.cursor.connection.execute("PRAGMA database_list").fetchone()[2]
+        
+        # Get all champions from DB
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT champion_id, name, faction, affinity, rarity
+            FROM champions
+            ORDER BY champion_id
+        """)
+        
+        champions_data = cursor.fetchall()
+        df_champs = pd.DataFrame(champions_data, columns=["Champion_ID", "Name", "Faction", "Affinity", "Rarity"])
+        
+        # Get all ratings from DB
+        cursor.execute("""
+            SELECT champion_id, category, subcategory, rating
+            FROM ratings
+            ORDER BY champion_id, category, subcategory
+        """)
+        
+        ratings_data = cursor.fetchall()
+        df_ratings = pd.DataFrame(ratings_data, columns=["Champion_ID", "Category", "Battle", "Rating"])
+        
+        conn.close()
+        
+        print(f"  Found {len(df_champs)} champions and {len(df_ratings)} ratings in database")
+        
+        # Write both sheets once, at the end
+        print("\n📤 Writing to Google Sheets (batch operation)...")
+        xcel._write_sheet_df(xcel.CHAMPIONS_SHEET, df_champs)
+        xcel._write_sheet_df(xcel.RATINGS_SHEET, df_ratings)
+        
+        print("\n✓ Sync complete!")
 
 def generate_champion_report(db, xcel):
     """Generate a comprehensive champion report and write to Sheets."""
